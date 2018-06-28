@@ -23,7 +23,9 @@
 #endif
 
 #ifdef _WIN32
+#ifndef NOMINMAX
 #define NOMINMAX
+#endif
 #include <WinSock2.h>
 #include <Ws2tcpip.h>
 #pragma comment(lib, "ws2_32.lib")
@@ -261,4 +263,5 @@ public:
 }
 
 #endif // NETWORKING_UWS_H
+
 

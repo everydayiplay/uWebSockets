@@ -72,11 +72,12 @@ protected:
     }
 
     Loop *loop;
+    bool isCustomLoop;
     NodeData *nodeData;
     std::recursive_mutex asyncMutex;
 
 public:
-    Node(int recvLength = 1024, int prePadding = 0, int postPadding = 0, bool useDefaultLoop = false);
+    Node(int recvLength = 1024, int prePadding = 0, int postPadding = 0, bool useDefaultLoop = false, uS::Loop* customLoop = nullptr);
     ~Node();
 
     /* Blocking */
@@ -200,3 +201,4 @@ public:
 }
 
 #endif // NODE_UWS_H
+

@@ -34,14 +34,21 @@ void NodeData::asyncCallback(Async *async)
     nodeData->asyncMutex->unlock();
 }
 
-Node::Node(int recvLength, int prePadding, int postPadding, bool useDefaultLoop) {
+Node::Node(int recvLength, int prePadding, int postPadding, bool useDefaultLoop, uS::Loop* customLoop) {
     nodeData = new NodeData;
     nodeData->recvBufferMemoryBlock = new char[recvLength];
     nodeData->recvBuffer = nodeData->recvBufferMemoryBlock + prePadding;
     nodeData->recvLength = recvLength - prePadding - postPadding;
 
     nodeData->tid = pthread_self();
-    loop = Loop::createLoop(useDefaultLoop);
+    if (customLoop) {
+        isCustomLoop = true;
+        loop = customLoop;
+    }
+    else {
+        isCustomLoop = false;
+        loop = Loop::createLoop(useDefaultLoop);
+    }
 
     // each node has a context
     nodeData->netContext = new Context();
@@ -81,7 +88,11 @@ Node::~Node() {
     delete [] nodeData->preAlloc;
     delete nodeData->netContext;
     delete nodeData;
-    loop->destroy();
+
+    if (!isCustomLoop) {
+        loop->destroy();
+    }
 }
 
 }
+
