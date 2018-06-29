@@ -129,7 +129,8 @@ public:
     // todo: hostname, backlog
     template <void A(Socket *s)>
     bool listen(const char *host, int port, uS::TLS::Context sslContext, int options, uS::NodeData *nodeData, void *user) {
-        addrinfo hints, *result;
+        addrinfo hints;
+        addrinfo *result = nullptr;
         memset(&hints, 0, sizeof(addrinfo));
 
         hints.ai_flags = AI_PASSIVE;
@@ -138,31 +139,66 @@ public:
 
         Context *netContext = nodeData->netContext;
 
-        if (getaddrinfo(host, std::to_string(port).c_str(), &hints, &result)) {
-            return true;
-        }
 
         uv_os_sock_t listenFd = SOCKET_ERROR;
-        addrinfo *listenAddr;
-        if ((options & uS::ONLY_IPV4) == 0) {
-            for (addrinfo *a = result; a && listenFd == SOCKET_ERROR; a = a->ai_next) {
-                if (a->ai_family == AF_INET6) {
-                    listenFd = netContext->createSocket(a->ai_family, a->ai_socktype, a->ai_protocol);
-                    listenAddr = a;
+        sockaddr *listenAddr;
+        size_t listenAddrLength = 0;
+
+        sockaddr_in6 addr6;
+        sockaddr_in addr4;
+
+        if (host) {
+            if (getaddrinfo(host, std::to_string(port).c_str(), &hints, &result)) {
+                return true;
+            }
+
+            if ((options & uS::ONLY_IPV4) == 0) {
+                for (addrinfo *a = result; a && listenFd == SOCKET_ERROR; a = a->ai_next) {
+                    if (a->ai_family == AF_INET6) {
+                        listenFd = netContext->createSocket(a->ai_family, a->ai_socktype, a->ai_protocol);
+                        listenAddr = a->ai_addr;
+                        listenAddrLength = a->ai_addrlen;
+                    }
                 }
             }
-        }
 
-        for (addrinfo *a = result; a && listenFd == SOCKET_ERROR; a = a->ai_next) {
-            if (a->ai_family == AF_INET) {
-                listenFd = netContext->createSocket(a->ai_family, a->ai_socktype, a->ai_protocol);
-                listenAddr = a;
+            for (addrinfo *a = result; a && listenFd == SOCKET_ERROR; a = a->ai_next) {
+                if (a->ai_family == AF_INET) {
+                    listenFd = netContext->createSocket(a->ai_family, a->ai_socktype, a->ai_protocol);
+                    listenAddr = a->ai_addr;
+                    listenAddrLength = a->ai_addrlen;
+                }
+            }
+
+            if (listenFd == SOCKET_ERROR && result) {
+                freeaddrinfo(result);
+                return true;
             }
         }
+        else {
+            if ((options & uS::ONLY_IPV4) == 0) {
+                memset(&addr6, 0, sizeof(sockaddr_in6));
+                addr6.sin6_family = AF_INET6;
+                addr6.sin6_addr = in6addr_any;
+                addr6.sin6_port = htons(static_cast<uint16_t>(port));
+                listenAddr = reinterpret_cast<sockaddr*>(&addr6);
+                listenAddrLength = sizeof(sockaddr_in6);
 
-        if (listenFd == SOCKET_ERROR) {
-            freeaddrinfo(result);
-            return true;
+                listenFd = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
+                int offIPV6_V6ONLY = 0;
+                setsockopt(listenFd, IPPROTO_IPV6, IPV6_V6ONLY, (char*)&offIPV6_V6ONLY, sizeof(offIPV6_V6ONLY));
+
+            }
+            else {
+                memset(&addr4, 0, sizeof(sockaddr_in));
+                addr4.sin_family = AF_INET;
+                addr4.sin_addr = in4addr_any;
+                addr4.sin_port = htons(static_cast<uint16_t>(port));
+                listenAddr = reinterpret_cast<sockaddr*>(&addr4);
+                listenAddrLength = sizeof(sockaddr_in);
+
+                listenFd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+            }
         }
 
 #ifdef __linux
@@ -177,9 +213,11 @@ public:
         int enabled = true;
         setsockopt(listenFd, SOL_SOCKET, SO_REUSEADDR, &enabled, sizeof(enabled));
 
-        if (::bind(listenFd, listenAddr->ai_addr, listenAddr->ai_addrlen) || ::listen(listenFd, 512)) {
+        if (::bind(listenFd, listenAddr, listenAddrLength) || ::listen(listenFd, 512)) {
             netContext->closeSocket(listenFd);
-            freeaddrinfo(result);
+            if (result) {
+                freeaddrinfo(result);
+            }
             return true;
         }
 
@@ -192,8 +230,9 @@ public:
 
         // should be vector of listen data! one group can have many listeners!
         nodeData->user = listenSocket;
-
-        freeaddrinfo(result);
+        if (result) {
+            freeaddrinfo(result);
+        }
         return false;
     }
 };
