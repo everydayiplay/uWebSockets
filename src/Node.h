@@ -179,7 +179,7 @@ public:
             if ((options & uS::ONLY_IPV4) == 0) {
                 memset(&addr6, 0, sizeof(sockaddr_in6));
                 addr6.sin6_family = AF_INET6;
-                addr6.sin6_addr = in6addr_any;
+                addr6.sin6_addr = IN6ADDR_ANY_INIT;
                 addr6.sin6_port = htons(static_cast<uint16_t>(port));
                 listenAddr = reinterpret_cast<sockaddr*>(&addr6);
                 listenAddrLength = sizeof(sockaddr_in6);
@@ -192,7 +192,7 @@ public:
             else {
                 memset(&addr4, 0, sizeof(sockaddr_in));
                 addr4.sin_family = AF_INET;
-                addr4.sin_addr = in4addr_any;
+                addr4.sin_addr = { INADDR_ANY };
                 addr4.sin_port = htons(static_cast<uint16_t>(port));
                 listenAddr = reinterpret_cast<sockaddr*>(&addr4);
                 listenAddrLength = sizeof(sockaddr_in);
