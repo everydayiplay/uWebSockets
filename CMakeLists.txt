@@ -2,6 +2,10 @@ cmake_minimum_required(VERSION 3.4)
 
 project(uWebSockets)
 
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+	add_compile_options(-fPIC -stdlib=libc++ -Wall -Wextra -Wpedantic)
+	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -stdlib=libc++ -lc++abi") 
+endif()
 
 find_package(OpenSSL REQUIRED)
 set(LIBUV_USE_STATIC ON)
@@ -56,7 +60,6 @@ endif()
 if (WIN32)
     target_compile_definitions(uWS PRIVATE _CRT_SECURE_NO_WARNINGS)
 endif()
-
 
 
 
