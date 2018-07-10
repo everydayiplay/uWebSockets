@@ -4,9 +4,8 @@ project(uWebSockets)
 
 
 find_package(OpenSSL REQUIRED)
-find_path(LIBUV_INCLUDE uv.h)
-find_library(LIBUV_LIBRARY libuv)
-
+set(LIBUV_USE_STATIC ON)
+find_package(LibUV REQUIRED)
 
 
 set(PublicHeaders src/Asio.h
@@ -46,11 +45,11 @@ set_target_properties(uWS PROPERTIES PUBLIC_HEADER "${PublicHeaders}")
 set_property(TARGET uWS PROPERTY CXX_STANDARD 11)
 set_property(TARGET uWS PROPERTY CXX_STANDARD_REQUIRED ON)
 
-target_include_directories(uWS PUBLIC ${LIBUV_INCLUDE} ${OPENSSL_INCLUDE_DIR})
+target_include_directories(uWS PUBLIC ${LIBUV_INCLUDE_DIRS} ${OPENSSL_INCLUDE_DIR})
 if (BUILD_SHARED_LIBS)
-    target_link_libraries(uWS PRIVATE OpenSSL::SSL OpenSSL::Crypto ${LIBUV_LIBRARY})
+    target_link_libraries(uWS PRIVATE OpenSSL::SSL OpenSSL::Crypto ${LIBUV_LIBRARIES})
 else()
-    target_link_libraries(uWS PUBLIC OpenSSL::SSL OpenSSL::Crypto ${LIBUV_LIBRARY})
+    target_link_libraries(uWS PUBLIC OpenSSL::SSL OpenSSL::Crypto ${LIBUV_LIBRARIES})
     target_compile_definitions(uWS PUBLIC UWEBSOCKET_STATIC)
 endif()
 
